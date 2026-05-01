@@ -25,7 +25,7 @@ import { colors } from '@/theme';
 import { listings, type PhotoVariant } from '@/data/mock';
 
 const BUDGET_MIN = 100;
-const BUDGET_MAX = 1200;
+const BUDGET_MAX = 2000;
 const BUDGET_CHIPS = [200, 500, 1000, 2000];
 
 const CATS = [
