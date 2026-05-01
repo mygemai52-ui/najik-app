@@ -2,12 +2,16 @@
  * Screen 03 · Home — budget-first discovery
  *
  * Faithful port of the canonical prototype (see najik-handoff/source/screens-data.js
- * `Screen 03` block). Budget-first chip rail, tinted category tiles, warm Tihar
- * promo, "Restaurants near you" rail, "Trending in Thamel" 2-up grid.
+ * `Screen 03` block). Budget-first chip rail + slider, tinted category tiles, warm
+ * Tihar promo, "Restaurants near you" rail, "Trending in Thamel" 2-up grid.
+ *
+ * All listing data comes from src/data/mock.ts — single source of truth so the
+ * detail page (and downstream checkout / booking-confirmed) shows the same
+ * names users tap on the home rail.
  */
-import React, { useMemo, useState } from 'react';
-import { ScrollView, View, Text, Pressable } from 'react-native';
-import { useRouter, Link } from 'expo-router';
+import React, { useMemo, useState, useRef } from 'react';
+import { ScrollView, View, Text, Pressable, GestureResponderEvent, LayoutChangeEvent } from 'react-native';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MockStatusBar } from '@/components/StatusBar';
 import { BottomNav } from '@/components/BottomNav';
@@ -18,8 +22,11 @@ import {
   Heart, Verify, Star, Trend, Sparkles,
 } from '@/icons/Icon';
 import { colors } from '@/theme';
+import { listings, type PhotoVariant } from '@/data/mock';
 
-const BUDGETS = [200, 500, 1000, 2000];
+const BUDGET_MIN = 100;
+const BUDGET_MAX = 1200;
+const BUDGET_CHIPS = [200, 500, 1000, 2000];
 
 const CATS = [
   { key: 'restaurants', label: 'Restaurants', Icon: Fork },
@@ -32,41 +39,24 @@ const CATS = [
   { key: 'more',        label: 'More',        Icon: More },
 ] as const;
 
-type Listing = {
-  id: string;
-  name: string;
-  sub: string;
-  rating: number;
-  price: string;
-  status: string;
-  statusTone?: 'default' | 'warn';
-  badge?: 'verified' | 'promoted';
-  variant: 'warm' | 'cool' | 'green' | 'bed' | 'peach';
-  saved?: boolean;
-};
-
-const NEAR_YOU: Listing[] = [
-  { id: 'r1', name: 'Yangling Tibetan',  sub: 'Tibetan · 0.4 km · Thamel',     rating: 4.6, price: 'Rs. 350/person', status: 'Open · 5 tables free',  badge: 'verified', variant: 'warm',  saved: true },
-  { id: 'r2', name: 'Bota Momo Centre',  sub: 'Newari · 0.8 km · Jhamsikhel',  rating: 4.4, price: 'Rs. 280/person', status: 'Open · 3 tables left',  badge: 'promoted', variant: 'cool' },
-  { id: 'r3', name: 'Or2k Vegetarian',   sub: 'Veg · Multi-cuisine · 1.1 km',  rating: 4.7, price: 'Rs. 450/person', status: 'Closes in 30 min', statusTone: 'warn', badge: 'verified', variant: 'green' },
-];
-
-const TRENDING = [
-  { id: 'h1', name: 'Hotel Mulberry', sub: 'Rs. 4,200/night · 4.5★', tag: 'Hot',   variant: 'bed'   as const },
-  { id: 's1', name: 'Glow Salon',     sub: 'From Rs. 600 · 4.6★',     tag: 'Hot',   variant: 'peach' as const },
-];
-
 export default function Home() {
-  const [budget, setBudget] = useState<number | 'none'>(500);
-  const [saved, setSaved] = useState<Record<string, boolean>>(
-    Object.fromEntries(NEAR_YOU.map((l) => [l.id, !!l.saved]))
-  );
   const router = useRouter();
+  const [budget, setBudget] = useState<number | 'none'>(500);
+  const [saved, setSaved] = useState<Record<string, boolean>>({ r1: true });
 
-  const listings = useMemo(
-    () => (budget === 'none' ? NEAR_YOU : NEAR_YOU.filter((_, i) => i < 3)),
-    [budget],
+  // Show 3 listings — Yangling Tibetan / Bota Momo Centre Promoted / Or2k Vegetarian
+  const nearYou = useMemo(
+    () => listings.filter((l) => ['r1', 'r2', 'r3'].includes(l.id)),
+    [],
   );
+  const trending = useMemo(
+    () => listings.filter((l) => ['h1', 's1'].includes(l.id)),
+    [],
+  );
+
+  const goCategory = (cat: string) => {
+    router.push(`/(consumer)/restaurants?category=${cat}` as never);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
@@ -84,7 +74,7 @@ export default function Home() {
           backgroundColor: colors.surface,
         }}
       >
-        <View style={{ flexDirection: 'column', justifyContent: 'center' }}>
+        <View>
           <Text style={{ fontSize: 9.5, color: colors.inkMuted, fontWeight: '500', letterSpacing: 0.4 }}>
             Location · नजिकै
           </Text>
@@ -95,42 +85,29 @@ export default function Home() {
         </View>
         <View style={{ flex: 1 }} />
         <Pressable
+          onPress={() => {}}
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: colors.line,
-            backgroundColor: colors.card,
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
+            width: 32, height: 32, borderRadius: 16,
+            borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card,
+            alignItems: 'center', justifyContent: 'center', position: 'relative',
           }}
         >
           <Bell size={14} color={colors.ink} />
           <View
             style={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              width: 7,
-              height: 7,
-              borderRadius: 3.5,
+              position: 'absolute', top: 4, right: 4,
+              width: 7, height: 7, borderRadius: 3.5,
               backgroundColor: colors.lime[500],
-              borderWidth: 1.5,
-              borderColor: colors.card,
+              borderWidth: 1.5, borderColor: colors.card,
             }}
           />
         </Pressable>
         <Pressable
           onPress={() => router.push('/(consumer)/profile')}
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
+            width: 32, height: 32, borderRadius: 16,
             backgroundColor: colors.plum[500],
-            alignItems: 'center',
-            justifyContent: 'center',
+            alignItems: 'center', justifyContent: 'center',
           }}
         >
           <User size={14} color="#fff" />
@@ -138,7 +115,7 @@ export default function Home() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Greeting */}
@@ -153,22 +130,15 @@ export default function Home() {
 
         {/* Search */}
         <View style={{ paddingHorizontal: 14, paddingBottom: 4 }}>
-          <View
+          <Pressable
+            onPress={() => router.push('/(consumer)/restaurants')}
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 9,
+              flexDirection: 'row', alignItems: 'center', gap: 9,
               backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.line,
-              borderRadius: 12,
-              paddingHorizontal: 13,
-              paddingVertical: 11,
-              shadowColor: '#0F0A1E',
-              shadowOpacity: 0.04,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 1,
+              borderWidth: 1, borderColor: colors.line, borderRadius: 12,
+              paddingHorizontal: 13, paddingVertical: 11,
+              shadowColor: '#0F0A1E', shadowOpacity: 0.04, shadowRadius: 8,
+              shadowOffset: { width: 0, height: 4 }, elevation: 1,
             }}
           >
             <Search size={14} color={colors.inkMuted} />
@@ -177,17 +147,14 @@ export default function Home() {
             </Text>
             <View
               style={{
-                width: 22,
-                height: 22,
-                borderRadius: 11,
+                width: 22, height: 22, borderRadius: 11,
                 backgroundColor: colors.plum[50],
-                alignItems: 'center',
-                justifyContent: 'center',
+                alignItems: 'center', justifyContent: 'center',
               }}
             >
               <Mic size={12} color={colors.plum[700]} />
             </View>
-          </View>
+          </Pressable>
         </View>
 
         {/* Body */}
@@ -199,7 +166,7 @@ export default function Home() {
             contentContainerStyle={{ gap: 6, paddingTop: 12, paddingBottom: 4 }}
           >
             <ChipPill active label="Within budget" icon={<Trend size={11} color="#fff" />} />
-            {BUDGETS.map((v) => (
+            {BUDGET_CHIPS.map((v) => (
               <BudgetChip
                 key={v}
                 label={`Rs. ${v.toLocaleString()}`}
@@ -214,86 +181,73 @@ export default function Home() {
             />
           </ScrollView>
 
-          {/* Categories — 4-col grid */}
-          <View
-            style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              gap: 8,
-              marginTop: 14,
-            }}
-          >
-            {CATS.map(({ key, label, Icon }) => (
-              <Pressable
-                key={key}
-                onPress={() =>
-                  key === 'restaurants' || key === 'cafes'
-                    ? router.push('/(consumer)/restaurants')
-                    : null
-                }
-                style={{
-                  width: '22.6%',
-                  borderRadius: 14,
-                  paddingTop: 10,
-                  paddingBottom: 8,
-                  alignItems: 'center',
-                  backgroundColor: colors.card,
-                  borderWidth: 1,
-                  borderColor: colors.line,
-                }}
-              >
-                <View
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 9,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon size={16} color={colors.plum[700]} />
-                </View>
-                <Text style={{ fontSize: 10, fontWeight: '600', color: colors.ink, marginTop: 5 }}>
-                  {label}
-                </Text>
-              </Pressable>
+          {/* Budget slider — brand promise made tangible */}
+          <BudgetSlider
+            value={typeof budget === 'number' ? budget : BUDGET_MAX}
+            min={BUDGET_MIN}
+            max={BUDGET_MAX}
+            disabled={budget === 'none'}
+            onChange={(v) => setBudget(v)}
+          />
+
+          {/* Categories — true 4-col grid via two rows */}
+          <View style={{ marginTop: 12, gap: 8 }}>
+            {[CATS.slice(0, 4), CATS.slice(4, 8)].map((row, ri) => (
+              <View key={ri} style={{ flexDirection: 'row', gap: 8 }}>
+                {row.map(({ key, label, Icon }) => (
+                  <Pressable
+                    key={key}
+                    onPress={() => goCategory(key)}
+                    style={{
+                      flex: 1,
+                      borderRadius: 14,
+                      paddingTop: 10, paddingBottom: 8,
+                      alignItems: 'center',
+                      backgroundColor: colors.card,
+                      borderWidth: 1, borderColor: colors.line,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 30, height: 30, borderRadius: 9,
+                        alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      <Icon size={16} color={colors.plum[700]} />
+                    </View>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: colors.ink, marginTop: 5 }}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             ))}
           </View>
 
           {/* Tihar promo card */}
-          <View style={{ marginTop: 14, borderRadius: 16, overflow: 'hidden' }}>
+          <Pressable
+            onPress={() => router.push('/(consumer)/restaurants')}
+            style={{ marginTop: 14, borderRadius: 16, overflow: 'hidden' }}
+          >
             <LinearGradient
               colors={['#FFE9C7', colors.plum[50]]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ padding: 14, flexDirection: 'row', gap: 12, alignItems: 'center' }}
             >
-              {/* lime decoration circle top-right */}
               <View
                 style={{
-                  position: 'absolute',
-                  top: -20,
-                  right: -10,
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  backgroundColor: colors.lime[500],
-                  opacity: 0.3,
+                  position: 'absolute', top: -20, right: -10,
+                  width: 80, height: 80, borderRadius: 40,
+                  backgroundColor: colors.lime[500], opacity: 0.3,
                 }}
               />
               <View
                 style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 12,
+                  width: 42, height: 42, borderRadius: 12,
                   backgroundColor: '#fff',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: '#0F0A1E',
-                  shadowOpacity: 0.06,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 4 },
-                  elevation: 1,
+                  alignItems: 'center', justifyContent: 'center',
+                  shadowColor: '#0F0A1E', shadowOpacity: 0.06, shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 4 }, elevation: 1,
                 }}
               >
                 <Sparkles size={18} color={colors.warn} />
@@ -301,11 +255,8 @@ export default function Home() {
               <View style={{ flex: 1 }}>
                 <Text
                   style={{
-                    fontSize: 10,
-                    fontWeight: '800',
-                    color: colors.warn,
-                    letterSpacing: 0.4,
-                    textTransform: 'uppercase',
+                    fontSize: 10, fontWeight: '800',
+                    color: colors.warn, letterSpacing: 0.4, textTransform: 'uppercase',
                   }}
                 >
                   Tihar specials
@@ -318,17 +269,25 @@ export default function Home() {
                 </Text>
               </View>
             </LinearGradient>
-          </View>
+          </Pressable>
 
           {/* Restaurants near you */}
           <SectionHd
             title="Restaurants near you"
             onSeeAll={() => router.push('/(consumer)/restaurants')}
           />
-          {listings.map((l) => (
+          {nearYou.map((l) => (
             <ListingRow
               key={l.id}
-              item={l}
+              id={l.id}
+              name={l.name}
+              sub={`${l.cuisine} · ${l.distanceKm} km · ${l.area.split(',')[0]}`}
+              rating={l.rating}
+              price={`Rs. ${l.priceFrom}/person`}
+              status={l.status}
+              statusTone={l.status.toLowerCase().includes('closes') ? 'warn' : 'default'}
+              badge={l.verified ? 'verified' : l.promoted ? 'promoted' : undefined}
+              variant={l.photo}
               saved={!!saved[l.id]}
               onToggleSave={() => setSaved((s) => ({ ...s, [l.id]: !s[l.id] }))}
               onPress={() => router.push(`/(consumer)/listing/${l.id}` as never)}
@@ -336,34 +295,42 @@ export default function Home() {
           ))}
 
           {/* Trending in Thamel */}
-          <SectionHd title="Trending in Thamel" onSeeAll={() => {}} style={{ marginTop: 18 }} />
+          <SectionHd
+            title="Trending in Thamel"
+            onSeeAll={() => router.push('/(consumer)/restaurants?category=more')}
+            style={{ marginTop: 18 }}
+          />
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-            {TRENDING.map((t) => (
+            {trending.map((l) => (
               <Pressable
-                key={t.id}
-                onPress={() => router.push(`/(consumer)/listing/${t.id}` as never)}
-                style={{ flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line }}
+                key={l.id}
+                onPress={() => router.push(`/(consumer)/listing/${l.id}` as never)}
+                style={{
+                  flex: 1, borderRadius: 14, overflow: 'hidden',
+                  backgroundColor: colors.card,
+                  borderWidth: 1, borderColor: colors.line,
+                }}
               >
-                <Photo variant={t.variant} style={{ aspectRatio: 16 / 11 }}>
+                <Photo variant={l.photo} style={{ aspectRatio: 16 / 11 }}>
                   <View
                     style={{
-                      position: 'absolute',
-                      top: 8,
-                      left: 8,
+                      position: 'absolute', top: 8, left: 8,
                       backgroundColor: colors.lime[500],
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                      borderRadius: 6,
+                      paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
                     }}
                   >
-                    <Text style={{ fontSize: 9, fontWeight: '800', color: colors.lime[900] }}>{t.tag}</Text>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: colors.lime[900] }}>Hot</Text>
                   </View>
                 </Photo>
                 <View style={{ padding: 10 }}>
                   <Text style={{ fontWeight: '800', fontSize: 12, color: colors.ink }} numberOfLines={1}>
-                    {t.name}
+                    {l.name}
                   </Text>
-                  <Text style={{ fontSize: 10.5, color: colors.inkMuted, marginTop: 2 }}>{t.sub}</Text>
+                  <Text style={{ fontSize: 10.5, color: colors.inkMuted, marginTop: 2 }}>
+                    {l.category === 'hotels'
+                      ? `Rs. ${l.priceFrom.toLocaleString()}/night · ${l.rating}★`
+                      : `From Rs. ${l.priceFrom} · ${l.rating}★`}
+                  </Text>
                 </View>
               </Pressable>
             ))}
@@ -382,15 +349,10 @@ function ChipPill({ label, active, icon }: { label: string; active?: boolean; ic
   return (
     <View
       style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: 999,
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999,
         backgroundColor: active ? colors.plum[500] : colors.card,
-        borderWidth: active ? 0 : 1,
-        borderColor: colors.lineStrong,
+        borderWidth: active ? 0 : 1, borderColor: colors.lineStrong,
       }}
     >
       {icon}
@@ -406,19 +368,15 @@ function BudgetChip({ label, selected, onPress }: { label: string; selected?: bo
     <Pressable
       onPress={onPress}
       style={{
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: 999,
+        paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999,
         backgroundColor: selected ? colors.plum[500] : colors.card,
-        borderWidth: selected ? 0 : 1,
-        borderColor: colors.lineStrong,
+        borderWidth: selected ? 0 : 1, borderColor: colors.lineStrong,
       }}
     >
       <Text
         style={{
           color: selected ? '#fff' : colors.ink,
-          fontWeight: selected ? '700' : '500',
-          fontSize: 11,
+          fontWeight: selected ? '700' : '500', fontSize: 11,
         }}
       >
         {label}
@@ -432,11 +390,8 @@ function SectionHd({ title, onSeeAll, style }: { title: string; onSeeAll?: () =>
     <View
       style={[
         {
-          marginTop: 14,
-          marginBottom: 6,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          marginTop: 14, marginBottom: 6,
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         },
         style,
       ]}
@@ -454,64 +409,158 @@ function SectionHd({ title, onSeeAll, style }: { title: string; onSeeAll?: () =>
   );
 }
 
-function ListingRow({
-  item,
-  saved,
-  onToggleSave,
-  onPress,
+/**
+ * Tap-to-set budget slider. RN doesn't ship with a Slider on web, and we
+ * don't want a heavy native dep just for one screen — this version is
+ * deliberately tap-only (each tap on the track sets the value to that point),
+ * which works identically on iOS / Android / Web.
+ */
+function BudgetSlider({
+  value, min, max, onChange, disabled,
 }: {
-  item: Listing;
+  value: number; min: number; max: number;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+}) {
+  const [width, setWidth] = useState(1);
+  const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
+
+  const pct = Math.max(0, Math.min(1, (value - min) / (max - min)));
+
+  const setFromX = (x: number) => {
+    if (disabled) return;
+    const clamped = Math.max(0, Math.min(width, x));
+    const v = Math.round((clamped / width) * (max - min) + min);
+    // snap to nearest 50
+    onChange(Math.round(v / 50) * 50);
+  };
+
+  return (
+    <View style={{ marginTop: 14 }}>
+      <View
+        style={{
+          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 11, fontWeight: '700', color: colors.inkSec,
+            textTransform: 'uppercase', letterSpacing: 0.6,
+          }}
+        >
+          Budget per person
+        </Text>
+        <Text style={{ fontSize: 14, fontWeight: '800', color: disabled ? colors.inkMuted : colors.plum[700] }}>
+          {disabled ? 'Any' : `Rs. ${value.toLocaleString()}`}
+        </Text>
+      </View>
+      <Pressable
+        onLayout={onLayout}
+        onPress={(e: GestureResponderEvent) => setFromX(e.nativeEvent.locationX)}
+        disabled={disabled}
+        style={{ height: 36, marginTop: 8, justifyContent: 'center' }}
+      >
+        <View
+          style={{
+            height: 6, borderRadius: 999,
+            backgroundColor: colors.line,
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute', left: 0, top: '50%', marginTop: -3,
+            width: `${pct * 100}%`, height: 6, borderRadius: 999,
+            backgroundColor: disabled ? colors.lineStrong : colors.plum[500],
+          }}
+        />
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute', left: `${pct * 100}%`, top: '50%',
+            marginLeft: -11, marginTop: -11,
+            width: 22, height: 22, borderRadius: 11,
+            backgroundColor: '#fff',
+            borderWidth: 3, borderColor: disabled ? colors.lineStrong : colors.plum[500],
+            shadowColor: '#0F0A1E', shadowOpacity: 0.15, shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 }, elevation: 2,
+          }}
+        />
+      </Pressable>
+      <View
+        style={{
+          flexDirection: 'row', justifyContent: 'space-between', marginTop: 2,
+        }}
+      >
+        <Text style={{ fontSize: 10, color: colors.inkMuted }}>Rs. {min.toLocaleString()}</Text>
+        <Text style={{ fontSize: 10, color: colors.inkMuted }}>Rs. {max.toLocaleString()}+</Text>
+      </View>
+    </View>
+  );
+}
+
+type RowProps = {
+  id: string;
+  name: string;
+  sub: string;
+  rating: number;
+  price: string;
+  status: string;
+  statusTone?: 'default' | 'warn';
+  badge?: 'verified' | 'promoted';
+  variant: PhotoVariant;
   saved: boolean;
   onToggleSave: () => void;
   onPress: () => void;
-}) {
+};
+
+function ListingRow({
+  name, sub, rating, price, status, statusTone, badge, variant, saved, onToggleSave, onPress,
+}: RowProps) {
   return (
     <Pressable
       onPress={onPress}
       style={{
-        marginTop: 10,
-        flexDirection: 'row',
-        backgroundColor: colors.card,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: colors.line,
-        overflow: 'hidden',
+        marginTop: 10, flexDirection: 'row',
+        backgroundColor: colors.card, borderRadius: 16,
+        borderWidth: 1, borderColor: colors.line, overflow: 'hidden',
       }}
     >
-      <Photo variant={item.variant} style={{ width: 80, height: 80 }} />
+      <Photo variant={variant} style={{ width: 80, height: 88 }} />
       <View style={{ flex: 1, paddingHorizontal: 11, paddingVertical: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <Text style={{ fontWeight: '800', fontSize: 13, color: colors.ink }} numberOfLines={1}>
-              {item.name}
+              {name}
             </Text>
-            {item.badge === 'verified' ? (
+            {badge === 'verified' ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.plum[500], paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
                 <Verify size={10} color="#fff" />
                 <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>Verified</Text>
               </View>
             ) : null}
-            {item.badge === 'promoted' ? (
+            {badge === 'promoted' ? (
               <View style={{ backgroundColor: colors.lime[500], paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
                 <Text style={{ fontSize: 9, fontWeight: '800', color: colors.lime[900] }}>Promoted</Text>
               </View>
             ) : null}
           </View>
           <Pressable onPress={onToggleSave} hitSlop={6}>
-            {saved ? <Heart size={14} color={colors.plum[500]} fill={colors.plum[500]} /> : <Heart size={14} color={colors.inkMuted} />}
+            {saved
+              ? <Heart size={14} color={colors.plum[500]} fill={colors.plum[500]} />
+              : <Heart size={14} color={colors.inkMuted} />}
           </Pressable>
         </View>
         <Text style={{ fontSize: 11, color: colors.inkMuted, marginTop: 2 }} numberOfLines={1}>
-          {item.sub}
+          {sub}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
             <Star size={11} color={colors.plum[700]} />
-            <Text style={{ fontSize: 11, fontWeight: '800', color: colors.ink }}>{item.rating}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: colors.ink }}>{rating}</Text>
           </View>
-          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.ink }}>{item.price}</Text>
-          <Text style={{ fontSize: 10.5, fontWeight: '700', color: item.statusTone === 'warn' ? colors.warn : colors.ok }}>
-            {item.status}
+          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.ink }}>{price}</Text>
+          <Text style={{ fontSize: 10.5, fontWeight: '700', color: statusTone === 'warn' ? colors.warn : colors.ok }}>
+            {status}
           </Text>
         </View>
       </View>

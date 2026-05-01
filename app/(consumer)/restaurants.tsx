@@ -6,9 +6,9 @@
  * a meatball menu. Each card surfaces "Tables free / 3 tables left / Closes in
  * 30 min" so the user can answer "can I walk in now?" without tapping in.
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ScrollView, View, Text, Pressable } from 'react-native';
-import { useRouter, Link } from 'expo-router';
+import { useRouter, Link, useLocalSearchParams } from 'expo-router';
 import { MockStatusBar } from '@/components/StatusBar';
 import { BottomNav } from '@/components/BottomNav';
 import { Photo } from '@/components/Photo';
@@ -34,20 +34,39 @@ const FILTER_CHIPS = [
   { key: 'tibetan', label: 'Tibetan' },
 ];
 
+const CATEGORY_TITLES: Record<string, string> = {
+  restaurants: 'Restaurants',
+  cafes: 'Cafés',
+  hotels: 'Hotels',
+  groceries: 'Groceries',
+  salons: 'Salons',
+  garages: 'Garages',
+  travel: 'Travel',
+  more: 'All listings',
+};
+
 export default function Restaurants() {
   const [active, setActive] = useState('budget');
   const router = useRouter();
+  const { category } = useLocalSearchParams<{ category?: string }>();
+  const cat = (category as string) ?? 'restaurants';
 
-  const food = listings.filter(
-    (l) => l.category === 'restaurants' || l.category === 'cafes',
-  );
+  const food = useMemo(() => {
+    if (cat === 'restaurants') {
+      return listings.filter((l) => l.category === 'restaurants' || l.category === 'cafes');
+    }
+    if (cat === 'more') return listings;
+    return listings.filter((l) => l.category === cat);
+  }, [cat]);
+
+  const title = CATEGORY_TITLES[cat] ?? 'Listings';
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <MockStatusBar />
       <ScreenHeader
-        title="Restaurants"
-        subtitle="24 within Rs. 500 · Thamel"
+        title={title}
+        subtitle={`${food.length} within Rs. 500 · Thamel`}
         onBack={() => router.back()}
         right={
           <View style={{ flexDirection: 'row', gap: 8 }}>

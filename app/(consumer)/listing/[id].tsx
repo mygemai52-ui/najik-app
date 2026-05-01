@@ -39,7 +39,7 @@ import {
   Check,
 } from '@/icons/Icon';
 import { colors } from '@/theme';
-import { listings, services, rooms, reviews } from '@/data/mock';
+import { listings, services, rooms, reviews, REVIEW_ASPECT_LABELS, type ReviewAspect } from '@/data/mock';
 
 export default function Listing() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -215,7 +215,7 @@ export default function Listing() {
                     }}
                   >
                     <Text style={{ fontSize: 10, color: colors.plum[700], fontWeight: '700' }}>
-                      {k}
+                      {REVIEW_ASPECT_LABELS[k as ReviewAspect] ?? k}
                     </Text>
                     <Text style={{ fontSize: 10, color: colors.plum[700] }}>{v}/5</Text>
                   </View>
