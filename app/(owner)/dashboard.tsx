@@ -133,8 +133,8 @@ export default function Dashboard() {
               marginTop: 4,
             }}
           >
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => (
-              <Text key={d} style={{ flex: 1, textAlign: 'center', fontSize: 10, color: colors.inkMuted }}>
+            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+              <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 10, color: colors.inkMuted }}>
                 {d}
               </Text>
             ))}
