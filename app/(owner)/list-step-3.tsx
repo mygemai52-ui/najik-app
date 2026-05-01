@@ -125,7 +125,10 @@ export default function ListStep3() {
         <SectionHeader title="Pricing display" pre="Auto" />
         <Card>
           <Text style={{ fontSize: 13, color: colors.inkSec }}>
-            Customers will see "From <Text style={{ fontWeight: '800', color: colors.plum[700] }}>Rs. {items.length > 0 ? Math.min(...items.map((i) => Number(i.price) || 0)) : 0}</Text>" on your card.
+            Customers will see "From <Text style={{ fontWeight: '800', color: colors.plum[700] }}>Rs. {(() => {
+              const valid = items.map((i) => Number(i.price)).filter((n) => Number.isFinite(n) && n > 0);
+              return valid.length > 0 ? Math.min(...valid) : 0;
+            })()}</Text>" on your card.
           </Text>
           <Text style={{ marginTop: 6, fontSize: 11, color: colors.inkMuted }}>
             We compute this from your lowest-priced item. Hide individual items
